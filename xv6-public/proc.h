@@ -46,6 +46,7 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
+  uint spawn_sz;               // Memory usage when the process is spawned 
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
@@ -58,6 +59,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // for block : part 3
+  int blocked_mask;    // Bitmask of blocked syscalls
+  struct proc *origin; // Pointer to creating shell
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -85,5 +90,7 @@ struct ptable_t {
 };
 
 extern struct ptable_t ptable;
+
+
 
 #endif // PROC_H

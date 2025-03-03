@@ -60,6 +60,9 @@ exec(char *path, char **argv)
   end_op();
   ip = 0;
 
+  // NEW: Record the original allocated size (without rounding up)
+  uint orig_sz = sz;
+
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
@@ -97,7 +100,7 @@ exec(char *path, char **argv)
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
-  curproc->spawn_sz = sz;  // Record memory usage at spawn time.
+  curproc->spawn_sz = orig_sz;  // NEW: Use the original size for spawn_sz
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);

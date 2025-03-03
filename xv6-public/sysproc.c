@@ -7,6 +7,9 @@
 #include "mmu.h"
 #include "proc.h"
 
+//  for block part 3
+#include "syscall.h"
+
 int
 sys_fork(void)
 {
@@ -108,3 +111,48 @@ int sys_gethistory(void) {
 // by the order in which processes terminated. Using cprintf ensures that output appears on the kernel console, which
 // will be visible as part of the shell’s output.
 
+
+// block : part 3
+
+int sys_block(void) {
+    int syscall_id;
+    if (argint(0, &syscall_id) < 0)
+        return -1;
+
+    if (syscall_id <= 0)
+        return -1;
+
+    // Protect critical syscalls (fork and exit)
+    if (syscall_id == SYS_fork || syscall_id == SYS_exit)
+        return -1;
+
+    struct proc *p = myproc();
+    // Use the origin if it exists; otherwise, use the current process.
+    struct proc *target = (p->origin ? p->origin : p);
+    target->blocked_mask |= (1 << syscall_id);
+    return 0;
+}
+
+
+
+int sys_unblock(void) {
+    int syscall_id;
+
+    if(argint(0, &syscall_id) < 0)
+        return -1;
+
+    if(syscall_id < 1)
+        return -1;
+
+    // Protect critical syscalls
+    if(syscall_id == SYS_fork || syscall_id == SYS_exit)
+        return -1;
+
+    // Get the process that owns the blocked mask.
+    // If this process is a child, its origin pointer is non-NULL; in that case, use the origin.
+    struct proc *p = myproc();
+    struct proc *target = (p->origin ? p->origin : p);
+
+    target->blocked_mask &= ~(1 << syscall_id);
+    return 0;
+}

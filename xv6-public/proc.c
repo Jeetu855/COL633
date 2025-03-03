@@ -89,6 +89,9 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  p->blocked_mask = 0;    // Initialize blocked mask
+  p->origin = 0;          // No origin yet
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -200,6 +203,15 @@ fork(void)
   np->spawn_sz = np->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
+  // Add these lines after copying parent state part 3: block
+  np->blocked_mask = curproc->blocked_mask;
+  np->origin = curproc->origin;
+
+  // Special case for init's children
+  if(curproc->pid == 1) {
+      np->origin = np;  // Shell becomes new origin
+  }
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
