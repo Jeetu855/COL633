@@ -11,6 +11,7 @@
 #include "stat.h"
 #include "param.h"
 
+
 #ifndef static_assert
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
 #endif
@@ -191,6 +192,9 @@ winode(uint inum, struct dinode *ip)
   rsect(bn, buf);
   dip = ((struct dinode*)buf) + (inum % IPB);
   *dip = *ip;
+  // ----------
+  // dip->minor = xshort(7);
+  // -------------
   wsect(bn, buf);
 }
 
@@ -230,6 +234,7 @@ ialloc(ushort type)
   din.type = xshort(type);
   din.nlink = xshort(1);
   din.size = xint(0);
+  din.mode = 7;
   winode(inum, &din);
   return inum;
 }

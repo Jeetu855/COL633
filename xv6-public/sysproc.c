@@ -7,8 +7,14 @@
 #include "mmu.h"
 #include "proc.h"
 
-//  for block part 3
-#include "syscall.h"
+#include "fs.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "file.h"
+
+// extern int chmod(char *file, short minor); // Defined in exec.c
+extern int chmod(char *file, uint mode); // Defined in exec.c
+
 
 int
 sys_fork(void)
@@ -93,66 +99,28 @@ sys_uptime(void)
   return xticks;
 }
 
+// asignment -------------------------
+int
+sys_chmod(void)
+{
+  char *file;
+  int mode;
 
-int sys_gethistory(void) {
-  int i;
-  // Acquire the process table lock to safely access shared data.
-  acquire(&ptable.lock);
+ 
+  if(argstr(0, &file) < 0)
+    return -1;
 
-  // Loop over the history entries and print each process's details.
-  for (i = 0; i < history_count; i++) {
-    cprintf("%d %s %d\n", proc_history[i].pid, proc_history[i].name, proc_history[i].mem_alloc);
-  }
-
-  release(&ptable.lock);
-  return history_count;  // Return the number of history entries recorded.
-}
-// This function iterates over a global history array (to be defined next) and prints each record clockwise
-// by the order in which processes terminated. Using cprintf ensures that output appears on the kernel console, which
-// will be visible as part of the shell’s output.
+  if(argint(1, &mode) < 0)
+    return -1;
+  
+    cprintf(file);
 
 
-// block : part 3
 
-int sys_block(void) {
-    int syscall_id;
-    if (argint(0, &syscall_id) < 0)
-        return -1;
-
-    if (syscall_id <= 0)
-        return -1;
-
-    // Protect critical syscalls (fork and exit)
-    if (syscall_id == SYS_fork || syscall_id == SYS_exit)
-        return -1;
-
-    struct proc *p = myproc();
-    // Use the origin if it exists; otherwise, use the current process.
-    struct proc *target = (p->origin ? p->origin : p);
-    target->blocked_mask |= (1 << syscall_id);
-    return 0;
+  return chmod_actual(file, mode);
 }
 
 
 
-int sys_unblock(void) {
-    int syscall_id;
 
-    if(argint(0, &syscall_id) < 0)
-        return -1;
-
-    if(syscall_id < 1)
-        return -1;
-
-    // Protect critical syscalls
-    if(syscall_id == SYS_fork || syscall_id == SYS_exit)
-        return -1;
-
-    // Get the process that owns the blocked mask.
-    // If this process is a child, its origin pointer is non-NULL; in that case, use the origin.
-    struct proc *p = myproc();
-    struct proc *target = (p->origin ? p->origin : p);
-
-    target->blocked_mask &= ~(1 << syscall_id);
-    return 0;
-}
+// ---------------------------------

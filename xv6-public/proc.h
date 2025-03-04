@@ -1,12 +1,3 @@
-#ifndef PROC_H
-#define PROC_H
-
-#include "param.h"
-#include "mmu.h"
-#include "x86.h"
-#include "spinlock.h"
-
-
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -46,7 +37,6 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
-  uint spawn_sz;               // Memory usage when the process is spawned 
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
@@ -59,10 +49,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-
-  // for block : part 3
-  int blocked_mask;    // Bitmask of blocked syscalls
-  struct proc *origin; // Pointer to creating shell
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -70,27 +56,3 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-
-
-
-struct history_entry {
-    int pid;
-    char name[16];
-    uint mem_alloc;  // Total memory allocated (in bytes) for the process.
-};
-
-#define MAX_HISTORY 64
-
-extern struct history_entry proc_history[MAX_HISTORY];
-extern int history_count;
-
-struct ptable_t {
-  struct spinlock lock;
-  struct proc proc[NPROC];
-};
-
-extern struct ptable_t ptable;
-
-
-
-#endif // PROC_H

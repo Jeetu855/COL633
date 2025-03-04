@@ -1,3 +1,5 @@
+
+
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE } type;
   int ref; // reference count
@@ -23,6 +25,10 @@ struct inode {
   short nlink;
   uint size;
   uint addrs[NDIRECT+1];
+
+  // asignment 1-------
+  uint mode;
+  // -------------
 };
 
 // table mapping major device number to

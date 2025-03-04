@@ -1,8 +1,12 @@
 // Shell.
 
+
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+
+
+
 
 // Parsed command representation
 #define EXEC  1
@@ -12,6 +16,7 @@
 #define BACK  5
 
 #define MAXARGS 10
+
 
 struct cmd {
   int type;
@@ -164,10 +169,50 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
+
+
+    if(buf[0]=='c' && buf[1]=='h' && buf[2]=='m' &&
+      buf[3]=='o' && buf[4]=='d' && buf[5]==' '){
+     buf[strlen(buf)-1] = 0;  
+     int i = 0;
+     char *p = buf + 6;  
+     
+     // Skip any extra spaces.
+     while(*p==' ')
+       p++;
+     
+
+     char fileName[64];
+     i = 0;
+     while(*p && *p != ' ' && i < (sizeof(fileName)-1)){
+       fileName[i++] = *p++;
+     }
+     fileName[i] = '\0';
+     
+    //  printf(1,fileName);
+
+     while(*p==' ')
+       p++;
+     
+
+     i = 0;
+     char modeStr[10];
+     while(*p && *p != ' ' && i < (sizeof(modeStr)-1)){
+       modeStr[i++] = *p++;
+     }
+     modeStr[i] = '\0';
+     
+     int mode = atoi(modeStr);
+     if(chmod(fileName, mode) < 0)
+       printf(2, "chmod %s failed\n", fileName);
+     else
+       printf(1, "chmod %s succeeded\nnew mode is %d\n", fileName,mode);
+     continue;
+   }
+
     if(fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
-
   }
   exit();
 }
@@ -492,3 +537,5 @@ nulterminate(struct cmd *cmd)
   }
   return cmd;
 }
+
+

@@ -7,12 +7,12 @@
 #include "proc.h"
 #include "spinlock.h"
 
-struct history_entry proc_history[MAX_HISTORY];
-int history_count = 0;
+struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;
 
 static struct proc *initproc;
-
-struct ptable_t ptable;
 
 int nextpid = 1;
 extern void forkret(void);
@@ -88,9 +88,6 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
-  p->blocked_mask = 0;    // Initialize blocked mask
-  p->origin = 0;          // No origin yet
 
   release(&ptable.lock);
 
@@ -200,18 +197,8 @@ fork(void)
     return -1;
   }
   np->sz = curproc->sz;
-  np->spawn_sz = np->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
-  // Add these lines after copying parent state part 3: block
-  np->blocked_mask = curproc->blocked_mask;
-  np->origin = curproc->origin;
-
-  // Special case for init's children
-  if(curproc->pid == 1) {
-      np->origin = np;  // Shell becomes new origin
-  }
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -272,15 +259,6 @@ exit(void)
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
-  }
-
-  if(history_count < MAX_HISTORY) {
-    proc_history[history_count].pid = curproc->pid;
-    // safestrcpy is used to safely copy the name string.
-    safestrcpy(proc_history[history_count].name, curproc->name, sizeof(proc_history[history_count].name));
-    // p->sz records the total memory (text, bss, data, stack, and heap) allocated when running.
-    proc_history[history_count].mem_alloc = curproc->sz;  
-    history_count++;
   }
 
   // Jump into the scheduler, never to return.

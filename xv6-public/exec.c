@@ -6,6 +6,13 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#include "fs.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "file.h"
+
+
+
 
 int
 exec(char *path, char **argv)
@@ -27,6 +34,16 @@ exec(char *path, char **argv)
     return -1;
   }
   ilock(ip);
+
+  // asignment 1---------------------------------------
+  if (!(ip->mode & 4)) {
+    iunlockput(ip);
+    end_op();
+    cprintf("Operation execute failed: permission denied\n");
+    return -1;
+  }
+  // -----------------------------
+
   pgdir = 0;
 
   // Check ELF header
@@ -59,9 +76,6 @@ exec(char *path, char **argv)
   iunlockput(ip);
   end_op();
   ip = 0;
-
-  // NEW: Record the original allocated size (without rounding up)
-  uint orig_sz = sz;
 
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
@@ -100,7 +114,6 @@ exec(char *path, char **argv)
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
-  curproc->spawn_sz = orig_sz;  // NEW: Use the original size for spawn_sz
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);
@@ -116,3 +129,65 @@ exec(char *path, char **argv)
   }
   return -1;
 }
+
+int
+chmod_actual(char *file, uint mode)
+{
+  struct inode *ip;
+
+ 
+  // if(strcmp(file, "chmod") == 0){
+  //   cprintf(2, "Operation chmod failed: cannot modify chmod itself.\n");
+  //   return -1;
+  // }
+
+
+  // if((ip = namei(file)) == 0){
+  //   cprintf("\nOperation chmod failed: file %s not found.\n", file);
+  //   return -1;
+  // }
+
+
+  if(mode < 0 || mode > 7){
+    cprintf("\nOperation chmod failed: invalid minor %d. Allowed range is 0-7.\n", mode);
+    
+    return -1;
+  }
+  begin_op();
+  if ((ip = namei(file)) == 0) {
+    end_op();
+    return -1;
+  }
+  ilock(ip);
+  cprintf("Value is %d\n", mode);
+  ip->mode = mode;  // store permission bits in minor
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
+  return 0;
+}
+
+// int sys_chmod(void)
+// {
+//   char *path;
+//   int mode;
+//   struct inode *ip;
+
+//   if (argstr(0, &path) < 0 || argint(1, &mode) < 0)
+//     return -1;
+//   if (mode < 0 || mode > 7)
+//     return -1;
+
+//   begin_op();
+//   if ((ip = namei(path)) == 0) {
+//     end_op();
+//     return -1;
+//   }
+//   ilock(ip);
+//   cprintf("Value is %d\n", mode);
+//   ip->minor = mode;  // store permission bits in minor
+//   iupdate(ip);
+//   iunlockput(ip);
+//   end_op();
+//   return 0;
+// }

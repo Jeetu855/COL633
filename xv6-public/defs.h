@@ -1,3 +1,6 @@
+#ifndef DEFS_H
+#define DEFS_H
+
 struct buf;
 struct context;
 struct file;
@@ -9,6 +12,11 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+
+// exec.c
+// int chmod_actual(char *file, short mode);
+int chmod_actual(char *file, uint mode);
+
 
 // bio.c
 void            binit(void);
@@ -188,3 +196,5 @@ void            clearpteu(pde_t *pgdir, char *uva);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+#endif

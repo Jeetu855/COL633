@@ -1,3 +1,4 @@
+
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
@@ -21,7 +22,7 @@ struct superblock {
   uint bmapstart;    // Block number of first free map block
 };
 
-#define NDIRECT 12
+#define NDIRECT 11
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
@@ -33,6 +34,10 @@ struct dinode {
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
   uint addrs[NDIRECT+1];   // Data block addresses
+
+  // asignment--------
+  uint mode;
+  // --------------
 };
 
 // Inodes per block.

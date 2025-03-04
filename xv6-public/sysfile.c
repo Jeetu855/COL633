@@ -75,6 +75,12 @@ sys_read(void)
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
+
+    if (!(f->ip->mode & 1)) {
+      cprintf("Operation read failed: permission denied\n");
+      return -1;
+    }
+
   return fileread(f, p, n);
 }
 
@@ -87,6 +93,15 @@ sys_write(void)
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
+
+  // Check if the file has the write permission using the mode field.
+  if (!(f->ip->mode & 2)) {
+      cprintf("Operation write failed: permission denied\n");
+      return -1;
+  }else if(f->ip->mode != 7 ){
+    cprintf("\nMode in sys_write %d\n",f->ip->mode);
+  }
+
   return filewrite(f, p, n);
 }
 

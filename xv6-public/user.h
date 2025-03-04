@@ -1,8 +1,3 @@
-#ifndef USER_H
-#define USER_H
-
-#include "types.h"
-
 struct stat;
 struct rtcdate;
 
@@ -15,10 +10,6 @@ int write(int, const void*, int);
 int read(int, void*, int);
 int close(int);
 int kill(int);
-
-int gethistory(void);
-int block(int);
-
 int exec(char*, char**);
 int open(const char*, int);
 int mknod(const char*, short, short);
@@ -33,6 +24,11 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+// -- asignment-------------
+int chmod(char*, uint);
+
+// --------------------
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
@@ -46,6 +42,3 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
-
-
-#endif // USER_H
