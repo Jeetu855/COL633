@@ -7,6 +7,16 @@
 #include "proc.h"
 #include "spinlock.h"
 
+// asignment 1:-----------
+#include "history_record.h"
+struct history_record history_log[HISTORY_MAX];
+int history_size = 0;
+struct spinlock history_spinlock;
+
+initlock(&history_spinlock, "historyLock");  // Initialize history log lock
+
+// -------------------
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -24,6 +34,9 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  // asignment 1----------------------
+  initlock(&history_spinlock, "historyLock");
+  //-------------------------------
 }
 
 // Must be called with interrupts disabled
@@ -142,6 +155,19 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  // asignment 1:-------------
+  acquire(&history_spinlock);
+  if(history_size < HISTORY_MAX){
+    history_log[history_size].process_id = p->pid;
+    safestrcpy(history_log[history_size].process_name, p->name, sizeof(history_log[history_size].process_name));
+    history_log[history_size].memory_usage = 0;  // Not known yet
+    history_size++;
+  }
+  release(&history_spinlock);
+
+
+  //------------------
+
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
@@ -252,6 +278,8 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
+
+
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
@@ -260,6 +288,23 @@ exit(void)
         wakeup1(initproc);
     }
   }
+
+  // asignment 1:------------------
+
+  int memUsage = curproc->sz;
+
+  // --- History Tracking: Update Process Information on Exit ---
+  // (You can update history while still holding ptable.lock, or release/reacquire if needed.)
+  acquire(&history_lock);
+  if (historyCount < MAX_LIMIT) { 
+    int i = historyCount++; // Use the next available slot in history_array
+    history_array[i].pid = curproc->pid;
+    safestrcpy(history_array[i].name, curproc->name, sizeof(history_array[i].name));
+    history_array[i].totalMemory = memUsage;
+  }
+  release(&history_lock);
+
+  //-------------------------
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;

@@ -12,9 +12,15 @@
 #include "sleeplock.h"
 #include "file.h"
 
-// extern int chmod(char *file, short minor); // Defined in exec.c
+#include "history_record.h"
+
+// asignment 1 : ----------------------------
 extern int chmod(char *file, uint mode); // Defined in exec.c
 
+extern struct history_record history_log[HISTORY_MAX]; // Global array storing history
+extern int history_size;  // Counter for stored entries
+extern struct spinlock history_spinlock;  // Lock for synchronization
+// ----------------------------------------
 
 int
 sys_fork(void)
@@ -99,7 +105,7 @@ sys_uptime(void)
   return xticks;
 }
 
-// asignment -------------------------
+// asignment 1-------------------------
 int
 sys_chmod(void)
 {
@@ -120,7 +126,28 @@ sys_chmod(void)
   return chmod_actual(file, mode);
 }
 
+int sys_gethistory(void) {
+  acquire(&history_lock);  // Lock access to history
 
+  // Sorting history by creation time (Bubble Sort for simplicity)
+  for (int i = 0; i < historyCount - 1; i++) {
+      for (int j = 0; j < historyCount - i - 1; j++) {
+          if (history_array[j].creationTime > history_array[j + 1].creationTime) {
+              struct history_struct temp = history_array[j];
+              history_array[j] = history_array[j + 1];
+              history_array[j + 1] = temp;
+          }
+      }
+  }
 
+  // Print history in required format
+  for (int i = 0; i < historyCount; i++) {
+      cprintf("PID: %d | Name: %s | Memory: %d bytes\n",
+              history_array[i].pid, history_array[i].name, history_array[i].totalMemory);
+  }
+
+  release(&history_lock);  // Unlock history access
+  return historyCount;  // Return the number of processes in history
+}
 
 // ---------------------------------

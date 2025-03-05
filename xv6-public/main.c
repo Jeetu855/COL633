@@ -6,6 +6,15 @@
 #include "proc.h"
 #include "x86.h"
 
+// asignment 1 : --------------
+
+#include "spinlock.h"
+#include "history_record.h"
+extern struct spinlock history_spinlock;
+
+
+// ---------------------------
+
 static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
@@ -31,6 +40,12 @@ main(void)
   binit();         // buffer cache
   fileinit();      // file table
   ideinit();       // disk 
+
+  // asignment 1:----------------------
+  initlock(&history_spinlock, "history_spinlock");
+
+  // -------------------------
+
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process

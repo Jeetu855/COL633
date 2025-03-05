@@ -26,6 +26,7 @@ int uptime(void);
 
 // -- asignment-------------
 int chmod(char*, uint);
+int get_history_log(char *buf);
 
 // --------------------
 

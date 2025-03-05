@@ -5,7 +5,10 @@
 #include "user.h"
 #include "fcntl.h"
 
-
+// asignment 1:--------------------
+#include "history_record.h"
+int get_history_log(char*);
+// ----------------------------
 
 
 // Parsed command representation
@@ -170,6 +173,21 @@ main(void)
       continue;
     }
 
+    if (buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' &&
+      buf[3] == 't' && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y' &&
+      (buf[7] == ' ' || buf[7] == '\0')) {  
+      struct history_record hist[HISTORY_MAX];
+      int count = get_history_log((char*)hist);
+      if (count < 0)
+          printf(2, "Error retrieving command history\n");
+      else {
+          for (int i = 0; i < count; i++) {
+              printf(1, "PID: %d | Command: %s | Memory: %d bytes\n", 
+                     hist[i].process_id, hist[i].process_name, hist[i].memory_usage);
+          }
+      }
+      continue;
+  }
 
     if(buf[0]=='c' && buf[1]=='h' && buf[2]=='m' &&
       buf[3]=='o' && buf[4]=='d' && buf[5]==' '){
