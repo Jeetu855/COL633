@@ -234,9 +234,7 @@ ialloc(ushort type)
   din.type = xshort(type);
   din.nlink = xshort(1);
   din.size = xint(0);
-  // asignment 1 : chmod-----------
   din.mode = 7;
-  // ----------------------------
   winode(inum, &din);
   return inum;
 }

@@ -11,8 +11,11 @@
 #include "sleeplock.h"
 #include "file.h"
 
-
-
+// history----------------
+#include "history_struct.h"
+int gethistory(char*);
+#include "syscall.h"
+// -----------------------------
 
 int
 exec(char *path, char **argv)
@@ -39,7 +42,7 @@ exec(char *path, char **argv)
   if (!(ip->mode & 4)) {
     iunlockput(ip);
     end_op();
-    cprintf("Operation execute failed: permission denied\n");
+    cprintf("Operation execute failed\n");
     return -1;
   }
   // -----------------------------
@@ -167,27 +170,56 @@ chmod_actual(char *file, uint mode)
   return 0;
 }
 
-// int sys_chmod(void)
-// {
-//   char *path;
-//   int mode;
-//   struct inode *ip;
 
-//   if (argstr(0, &path) < 0 || argint(1, &mode) < 0)
-//     return -1;
-//   if (mode < 0 || mode > 7)
-//     return -1;
+// history -----------
 
-//   begin_op();
-//   if ((ip = namei(path)) == 0) {
-//     end_op();
-//     return -1;
-//   }
-//   ilock(ip);
-//   cprintf("Value is %d\n", mode);
-//   ip->minor = mode;  // store permission bits in minor
-//   iupdate(ip);
-//   iunlockput(ip);
-//   end_op();
-//   return 0;
-// }
+int
+gethistory_actual(char *user_buffer)
+{
+  int count;
+  int bytes;
+
+  acquire(&hist_lock);
+  count = hist_count;  // Number of history entries recorded.
+  bytes = count * sizeof(struct history_struct);
+
+  // Copy the kernel's history array into the user-provided buffer.
+  if(copyout(myproc()->pgdir, (uint)user_buffer, (char *)hist_arr, bytes) < 0) {
+       release(&hist_lock);
+       return -1;
+  }
+  release(&hist_lock);
+  return count;
+}
+// --------------------
+
+
+// block unblock -----------------
+int block_actual(int syscall_id) {
+  if (syscall_id == SYS_fork || syscall_id == SYS_exit)
+      return -1; // Reject critical syscalls
+
+  struct proc *curproc = myproc();
+  if(syscall_id < 0 || syscall_id >= NELEM(curproc->blocked_syscalls))
+      return -1;
+
+  curproc->blocked_syscalls[syscall_id] = 1;
+  return 0;
+}
+
+// Actual unblocking implementation
+int 
+unblock_actual(int syscall_id)
+{
+  struct proc *curproc = myproc();
+
+  // Validate syscall ID range  
+  if(syscall_id < 0 || syscall_id >= NELEM(curproc->blocked_syscalls))
+    return -1;
+
+  curproc->blocked_syscalls[syscall_id] = 0;
+  return 0;
+}
+
+
+// -------------------------------

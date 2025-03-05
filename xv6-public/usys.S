@@ -30,4 +30,7 @@ SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
 
+SYSCALL(gethistory)
+SYSCALL(block)
+SYSCALL(unblock)
 SYSCALL(chmod)

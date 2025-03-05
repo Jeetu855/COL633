@@ -6,16 +6,13 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
-// asignment 1:-----------
-#include "history_record.h"
-struct history_record history_log[HISTORY_MAX];
-int history_size = 0;
-struct spinlock history_spinlock;
-
-initlock(&history_spinlock, "historyLock");  // Initialize history log lock
-
-// -------------------
+//history --------------------------------
+#include "history_struct.h"
+// Global history array and supporting variables.
+struct history_struct hist_arr[MAX_LIMIT];
+int hist_count = 0;
+struct spinlock hist_lock;
+/* ----------------- End History Tracking Definitions ----------------- */
 
 struct {
   struct spinlock lock;
@@ -34,9 +31,10 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
-  // asignment 1----------------------
-  initlock(&history_spinlock, "historyLock");
-  //-------------------------------
+  // history-------------
+  initlock(&hist_lock, "historyLock");  // Initialize our history lock
+
+  // -------------------
 }
 
 // Must be called with interrupts disabled
@@ -155,18 +153,18 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  // asignment 1:-------------
-  acquire(&history_spinlock);
-  if(history_size < HISTORY_MAX){
-    history_log[history_size].process_id = p->pid;
-    safestrcpy(history_log[history_size].process_name, p->name, sizeof(history_log[history_size].process_name));
-    history_log[history_size].memory_usage = 0;  // Not known yet
-    history_size++;
-  }
-  release(&history_spinlock);
+  // history---------------
 
+  // acquire(&hist_lock);
+  // if(hist_count < MAX_LIMIT){
+  //   hist_arr[hist_count].pid = p->pid;
+  //   safestrcpy(hist_arr[hist_count].name, p->name, sizeof(hist_arr[hist_count].name));
+  //   hist_arr[hist_count].totalMemory = 0;  // Not known yet
+  //   hist_count++;
+  // }
+  // release(&hist_lock);
 
-  //------------------
+  // -----------------------
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -238,6 +236,20 @@ fork(void)
 
   pid = np->pid;
 
+  // block unblock ------------------
+
+  np->shell_pid = curproc->shell_pid;
+
+    // Inheriting blocked system calls from the parent
+  // for(i = 0; i < 32; i++) {
+  //     np->blocked_syscalls[i] = curproc->blocked_syscalls[i];
+  // }
+  for(i = 0; i < NELEM(np->blocked_syscalls); i++) {
+    np->blocked_syscalls[i] = curproc->blocked_syscalls[i];
+}
+
+  // ---------------------------
+
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
@@ -278,8 +290,6 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
-
-
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
@@ -289,22 +299,19 @@ exit(void)
     }
   }
 
-  // asignment 1:------------------
-
+  // history---------------------------
   int memUsage = curproc->sz;
 
-  // --- History Tracking: Update Process Information on Exit ---
-  // (You can update history while still holding ptable.lock, or release/reacquire if needed.)
-  acquire(&history_lock);
-  if (historyCount < MAX_LIMIT) { 
-    int i = historyCount++; // Use the next available slot in history_array
-    history_array[i].pid = curproc->pid;
-    safestrcpy(history_array[i].name, curproc->name, sizeof(history_array[i].name));
-    history_array[i].totalMemory = memUsage;
+  
+  acquire(&hist_lock);
+  if (hist_count < MAX_LIMIT) { 
+    int i = hist_count++; // Use the next available slot in hist_arr
+    hist_arr[i].pid = curproc->pid;
+    safestrcpy(hist_arr[i].name, curproc->name, sizeof(hist_arr[i].name));
+    hist_arr[i].totalMemory = memUsage;
   }
-  release(&history_lock);
-
-  //-------------------------
+  release(&hist_lock);
+  // ---  -------------------
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;

@@ -77,7 +77,7 @@ sys_read(void)
     return -1;
 
     if (!(f->ip->mode & 1)) {
-      cprintf("Operation read failed: permission denied\n");
+      cprintf("Operation read failed\n");
       return -1;
     }
 
@@ -96,7 +96,7 @@ sys_write(void)
 
   // Check if the file has the write permission using the mode field.
   if (!(f->ip->mode & 2)) {
-      cprintf("Operation write failed: permission denied\n");
+      cprintf("Operation write failed\n");
       return -1;
   }else if(f->ip->mode != 7 ){
     cprintf("\nMode in sys_write %d\n",f->ip->mode);

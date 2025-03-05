@@ -105,9 +105,10 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 
 // asignemt 1--------------
-extern int sys_gethistory(void);
 extern int sys_chmod(void);
-
+extern int sys_gethistory(void);
+extern int sys_block(void);
+extern int sys_unblock(void);
 
 // --------------
 
@@ -134,8 +135,10 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 
-
+[SYS_gethistory] sys_gethistory,
 [SYS_chmod] sys_chmod,
+[SYS_block]    sys_block,
+[SYS_unblock]    sys_unblock,
 };
 
 void
@@ -144,12 +147,34 @@ syscall(void)
   int num;
   struct proc *curproc = myproc();
 
-  num = curproc->tf->eax;
-  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    curproc->tf->eax = syscalls[num]();
-  } else {
-    cprintf("%d %s: unknown sys call %d\n",
-            curproc->pid, curproc->name, num);
-    curproc->tf->eax = -1;
+  num = curproc->tf->eax; // getting syscall number
+
+
+  // block unblock------------------------------
+  
+  // Allowing unblock syscall to run even if exec is blocked
+  if (num == SYS_exec) {
+    char *path;
+    if (argstr(0, &path) >= 0 && strncmp(path, "unblock", 7) == 0)
+        goto exec_allowed;
   }
+
+  
+  if (num != SYS_fork && num != SYS_exit) {  // Always check blocking
+    if (curproc->blocked_syscalls[num]) {
+        cprintf("syscall %d is blocked\n", num);
+        curproc->tf->eax = -1; 
+        return;
+    }
+}
+
+exec_allowed:
+// -------------------------
+    if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+      curproc->tf->eax = syscalls[num]();
+    } else {
+      cprintf("%d %s: unknown sys call %d\n",
+              curproc->pid, curproc->name, num);
+      curproc->tf->eax = -1;
+    }
 }

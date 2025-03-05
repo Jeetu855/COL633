@@ -25,8 +25,10 @@ int sleep(int);
 int uptime(void);
 
 // -- asignment-------------
+int gethistory(char *buf);
+int block(int syscall_id);    
+int unblock(int syscall_id); 
 int chmod(char*, uint);
-int get_history_log(char *buf);
 
 // --------------------
 

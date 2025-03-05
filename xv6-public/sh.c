@@ -5,10 +5,12 @@
 #include "user.h"
 #include "fcntl.h"
 
-// asignment 1:--------------------
-#include "history_record.h"
-int get_history_log(char*);
-// ----------------------------
+// asignment----------------
+#include "history_struct.h"
+int gethistory(char*);
+int block(int);
+int unblock(int);
+// -----------------------------
 
 
 // Parsed command representation
@@ -165,6 +167,9 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
+
+
+
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
@@ -173,21 +178,6 @@ main(void)
       continue;
     }
 
-    if (buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' &&
-      buf[3] == 't' && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y' &&
-      (buf[7] == ' ' || buf[7] == '\0')) {  
-      struct history_record hist[HISTORY_MAX];
-      int count = get_history_log((char*)hist);
-      if (count < 0)
-          printf(2, "Error retrieving command history\n");
-      else {
-          for (int i = 0; i < count; i++) {
-              printf(1, "PID: %d | Command: %s | Memory: %d bytes\n", 
-                     hist[i].process_id, hist[i].process_name, hist[i].memory_usage);
-          }
-      }
-      continue;
-  }
 
     if(buf[0]=='c' && buf[1]=='h' && buf[2]=='m' &&
       buf[3]=='o' && buf[4]=='d' && buf[5]==' '){
@@ -227,6 +217,60 @@ main(void)
        printf(1, "chmod %s succeeded\nnew mode is %d\n", fileName,mode);
      continue;
    }
+
+   if(buf[0]=='h' && buf[1]=='i' && buf[2]=='s' &&
+    buf[3]=='t' && buf[4]=='o' && buf[5]=='r' && buf[6]=='y' &&
+    (buf[7]=='\n' || buf[7]=='\0')){
+   // Remove newline if present.
+   buf[strlen(buf)-1] = 0;
+   
+   struct history_struct hist[MAX_LIMIT];
+   int count = gethistory((char *)hist);
+   if(count < 0)
+     printf(2, "Error retrieving history\n");
+   else {
+     for(int i = 0; i < count; i++){
+       printf(1, "%d %s %d\n", hist[i].pid, hist[i].name, hist[i].totalMemory);
+     }
+   }
+   continue;
+ }
+ if(buf[0]=='b' && buf[1]=='l' && buf[2]=='o' && buf[3]=='c' && buf[4]=='k' &&
+  (buf[5]==' ' || buf[5]=='\t')){
+ buf[strlen(buf)-1] = 0;  // remove trailing newline
+ char *p = buf + 5;  // pointer after "block"
+ while(*p == ' ' || *p == '\t')
+   p++;
+ if(*p == '\0'){
+   printf(2, "Usage: block <syscall_id>\n");
+ } else {
+   int syscall_id = atoi(p);
+   if(block(syscall_id) == 0)
+     printf(1, "Blocked syscall %d\n", syscall_id);
+   else
+     printf(1, "Failed to block syscall %d\n", syscall_id);
+ }
+ continue;
+}
+
+if(buf[0]=='u' && buf[1]=='n' && buf[2]=='b' && buf[3]=='l' &&
+  buf[4]=='o' && buf[5]=='c' && buf[6]=='k' &&
+  (buf[7]==' ' || buf[7]=='\t')){
+ buf[strlen(buf)-1] = 0;  // remove trailing newline
+ char *p = buf + 7;  // pointer after "unblock"
+ while(*p == ' ' || *p == '\t')
+   p++;
+ if(*p == '\0'){
+   printf(2, "Usage: unblock <syscall_id>\n");
+ } else {
+   int syscall_id = atoi(p);
+   if(unblock(syscall_id) == 0)
+     printf(1, "Unblocked syscall %d\n", syscall_id);
+   else
+     printf(1, "Failed to unblock syscall %d\n", syscall_id);
+ }
+ continue;
+}
 
     if(fork1() == 0)
       runcmd(parsecmd(buf));
@@ -282,6 +326,13 @@ redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd)
   cmd->fd = fd;
   return (struct cmd*)cmd;
 }
+
+// block unblock-------------
+struct blockcmd {
+  int type;
+  int syscall_id;
+};
+// -----------------------
 
 struct cmd*
 pipecmd(struct cmd *left, struct cmd *right)
