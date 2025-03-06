@@ -185,7 +185,6 @@ main(void)
      int i = 0;
      char *p = buf + 6;  
      
-     // Skip any extra spaces.
      while(*p==' ')
        p++;
      

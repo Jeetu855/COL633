@@ -183,19 +183,32 @@ gethistory_actual(char *user_buffer)
 {
   int count;
   int bytes;
+  int i, j;
+  struct history_struct sorted;
 
   acquire(&hist_lock);
-  count = hist_count;  
+  count = hist_count;
   bytes = count * sizeof(struct history_struct);
 
-  
+  for(i = 0; i < count - 1; i++){
+    for(j = 0; j < count - i - 1; j++){
+      if(hist_arr[j].pid > hist_arr[j+1].pid){
+        sorted = hist_arr[j];
+        hist_arr[j] = hist_arr[j+1];
+        hist_arr[j+1] = sorted;
+    }
+  }
+}
+
   if(copyout(myproc()->pgdir, (uint)user_buffer, (char *)hist_arr, bytes) < 0) {
-       release(&hist_lock);
-       return -1;
+    release(&hist_lock);
+    return -1;
   }
   release(&hist_lock);
   return count;
 }
+
+
 // --------------------
 
 

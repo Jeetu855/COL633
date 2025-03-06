@@ -31,7 +31,7 @@ pinit(void)
 {
   initlock(&ptable.lock, "ptable");
   // history-------------
-  initlock(&hist_lock, "historyLock");  // initialize our history lock
+  initlock(&hist_lock, "historyLock");  
 
   // -------------------
 }
@@ -155,18 +155,6 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  // history---------------
-
-  // acquire(&hist_lock);
-  // if(hist_count < MAX_LIMIT){
-  //   hist_arr[hist_count].pid = p->pid;
-  //   safestrcpy(hist_arr[hist_count].name, p->name, sizeof(hist_arr[hist_count].name));
-  //   hist_arr[hist_count].totalMemory = 0;  // Not known yet
-  //   hist_count++;
-  // }
-  // release(&hist_lock);
-
-  // -----------------------
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
