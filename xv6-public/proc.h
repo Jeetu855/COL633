@@ -53,6 +53,7 @@ struct proc {
   // block unblock--------------------
   int shell_pid;               // Track the shell which process belong to
   int blocked_syscalls[32];    // 0 bit = allow   1 bit = dont allow
+  int check;
   // --------------------------------
 };
 

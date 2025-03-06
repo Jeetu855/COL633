@@ -15,6 +15,14 @@
 #include "history_struct.h"
 int gethistory(char*);
 #include "syscall.h"
+
+int strcmp(const char *s1, const char *s2) {
+  while (*s1 && (*s1 == *s2)) {
+      s1++;
+      s2++;
+  }
+  return *(unsigned char *)s1 - *(unsigned char *)s2;
+}
 // -----------------------------
 
 int
@@ -117,6 +125,9 @@ exec(char *path, char **argv)
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
+  // -------------------
+  curproc->check = 1;
+  // --------------------
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);
@@ -139,16 +150,10 @@ chmod_actual(char *file, uint mode)
   struct inode *ip;
 
  
-  // if(strcmp(file, "chmod") == 0){
-  //   cprintf(2, "Operation chmod failed: cannot modify chmod itself.\n");
-  //   return -1;
-  // }
-
-
-  // if((ip = namei(file)) == 0){
-  //   cprintf("\nOperation chmod failed: file %s not found.\n", file);
-  //   return -1;
-  // }
+  if(strcmp(file, "chmod") == 0){
+    cprintf(2, "Operation chmod failed: cannot modify chmod itself.\n");
+    return -1;
+  }
 
 
   if(mode < 0 || mode > 7){
@@ -180,10 +185,10 @@ gethistory_actual(char *user_buffer)
   int bytes;
 
   acquire(&hist_lock);
-  count = hist_count;  // Number of history entries recorded.
+  count = hist_count;  
   bytes = count * sizeof(struct history_struct);
 
-  // Copy the kernel's history array into the user-provided buffer.
+  
   if(copyout(myproc()->pgdir, (uint)user_buffer, (char *)hist_arr, bytes) < 0) {
        release(&hist_lock);
        return -1;
@@ -197,7 +202,7 @@ gethistory_actual(char *user_buffer)
 // block unblock -----------------
 int block_actual(int syscall_id) {
   if (syscall_id == SYS_fork || syscall_id == SYS_exit)
-      return -1; // Reject critical syscalls
+      return -1; 
 
   struct proc *curproc = myproc();
   if(syscall_id < 0 || syscall_id >= NELEM(curproc->blocked_syscalls))
@@ -207,7 +212,7 @@ int block_actual(int syscall_id) {
   return 0;
 }
 
-// Actual unblocking implementation
+
 int 
 unblock_actual(int syscall_id)
 {

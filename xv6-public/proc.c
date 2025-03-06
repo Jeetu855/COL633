@@ -8,11 +8,10 @@
 #include "spinlock.h"
 //history --------------------------------
 #include "history_struct.h"
-// Global history array and supporting variables.
 struct history_struct hist_arr[MAX_LIMIT];
 int hist_count = 0;
 struct spinlock hist_lock;
-/* ----------------- End History Tracking Definitions ----------------- */
+// ----------------- 
 
 struct {
   struct spinlock lock;
@@ -32,7 +31,7 @@ pinit(void)
 {
   initlock(&ptable.lock, "ptable");
   // history-------------
-  initlock(&hist_lock, "historyLock");  // Initialize our history lock
+  initlock(&hist_lock, "historyLock");  // initialize our history lock
 
   // -------------------
 }
@@ -99,6 +98,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  //-----
+  p->check = 0;
+  //------
 
   release(&ptable.lock);
 
@@ -240,10 +242,7 @@ fork(void)
 
   np->shell_pid = curproc->shell_pid;
 
-    // Inheriting blocked system calls from the parent
-  // for(i = 0; i < 32; i++) {
-  //     np->blocked_syscalls[i] = curproc->blocked_syscalls[i];
-  // }
+  
   for(i = 0; i < NELEM(np->blocked_syscalls); i++) {
     np->blocked_syscalls[i] = curproc->blocked_syscalls[i];
 }
@@ -302,16 +301,15 @@ exit(void)
   // history---------------------------
   int memUsage = curproc->sz;
 
-  
   acquire(&hist_lock);
-  if (hist_count < MAX_LIMIT) { 
-    int i = hist_count++; // Use the next available slot in hist_arr
+  if (hist_count < MAX_LIMIT && curproc->check) { 
+    int i = hist_count++; // 
     hist_arr[i].pid = curproc->pid;
     safestrcpy(hist_arr[i].name, curproc->name, sizeof(hist_arr[i].name));
     hist_arr[i].totalMemory = memUsage;
   }
   release(&hist_lock);
-  // ---  -------------------
+  // ----------------------
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;

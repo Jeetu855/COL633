@@ -15,9 +15,9 @@
 // asignement----------
 #include "syscall.h"
 #include "history_struct.h" 
-extern struct history_struct hist_arr[MAX_LIMIT]; // Declare the global history array
-extern int hist_count;  // Declare history count
-extern struct spinlock hist_lock;  // Declare history lock
+extern struct history_struct hist_arr[MAX_LIMIT]; 
+extern int hist_count;  
+extern struct spinlock hist_lock; 
 
 int block_actual(int);
 int unblock_actual(int);
@@ -133,27 +133,6 @@ sys_chmod(void)
 }
 
 
-// int
-// sys_gethistory(void)
-// {
-//   char *user_buffer;
-//   // The user passes a pointer to a buffer big enough to hold MAX_LIMIT history_struct entries.
-//   if(argptr(0, &user_buffer, sizeof(struct history_struct) * MAX_LIMIT) < 0)
-//       return -1;
-
-//   acquire(&history_lock);
-//   int count = historyCount;  // number of history entries recorded
-//   int bytes = count * sizeof(struct history_struct);
-//   // Copy the kernel's history array to the user-supplied buffer.
-//   if(copyout(myproc()->pgdir, (uint)user_buffer, (char*)history_array, bytes) < 0) {
-//        release(&history_lock);
-//        return -1;
-//   }
-//   release(&history_lock);
-//   return count; // Return the number of history entries copied
-// }
-
-
 
 // history ---------------------------------
 int
@@ -161,11 +140,9 @@ sys_gethistory(void)
 {
   char *user_buffer;
 
-  // Retrieve the pointer from the user; the buffer must be large enough for MAX_LIMIT entries.
   if(argptr(0, &user_buffer, sizeof(struct history_struct) * MAX_LIMIT) < 0)
     return -1;
 
-  // Call the actual implementation of gethistory.
   return gethistory_actual(user_buffer);
 }
 
@@ -175,7 +152,6 @@ int sys_block(void) {
   if (argint(0, &syscall_id) < 0)
       return -1;
   
-  // Prevent blocking fork/exit/exec
   if (syscall_id == SYS_fork || syscall_id == SYS_exit)
       return -1;
 
@@ -189,7 +165,6 @@ sys_unblock(void)
 {
   int syscall_id;
   
-  // Get syscall ID from user space
   if(argint(0, &syscall_id) < 0)
     return -1;
 

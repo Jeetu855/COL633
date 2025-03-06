@@ -221,7 +221,7 @@ main(void)
    if(buf[0]=='h' && buf[1]=='i' && buf[2]=='s' &&
     buf[3]=='t' && buf[4]=='o' && buf[5]=='r' && buf[6]=='y' &&
     (buf[7]=='\n' || buf[7]=='\0')){
-   // Remove newline if present.
+   
    buf[strlen(buf)-1] = 0;
    
    struct history_struct hist[MAX_LIMIT];
@@ -237,8 +237,8 @@ main(void)
  }
  if(buf[0]=='b' && buf[1]=='l' && buf[2]=='o' && buf[3]=='c' && buf[4]=='k' &&
   (buf[5]==' ' || buf[5]=='\t')){
- buf[strlen(buf)-1] = 0;  // remove trailing newline
- char *p = buf + 5;  // pointer after "block"
+ buf[strlen(buf)-1] = 0;  
+ char *p = buf + 5;  
  while(*p == ' ' || *p == '\t')
    p++;
  if(*p == '\0'){
@@ -256,8 +256,8 @@ main(void)
 if(buf[0]=='u' && buf[1]=='n' && buf[2]=='b' && buf[3]=='l' &&
   buf[4]=='o' && buf[5]=='c' && buf[6]=='k' &&
   (buf[7]==' ' || buf[7]=='\t')){
- buf[strlen(buf)-1] = 0;  // remove trailing newline
- char *p = buf + 7;  // pointer after "unblock"
+ buf[strlen(buf)-1] = 0;  
+ char *p = buf + 7;  
  while(*p == ' ' || *p == '\t')
    p++;
  if(*p == '\0'){
