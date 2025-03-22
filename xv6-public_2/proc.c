@@ -333,6 +333,10 @@ exit(void)
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
+
+////////////////////////////////////////////////////////
+
+/* C + B*/
 int
 wait(void)
 {
@@ -342,14 +346,16 @@ wait(void)
   
   acquire(&ptable.lock);
   for(;;){
-    // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
+      // If the child is backgrounded, skip waiting on it.
+      if(p->backgrounded)
+        continue;
       if(p->state == ZOMBIE){
-        // Found one.
+        // Found one; reap it.
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -363,17 +369,70 @@ wait(void)
         return pid;
       }
     }
-
-    // No point waiting if we don't have any children.
+    // If there are no children at all, or the current process is killed, return.
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
     }
-
-    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+    // If at least one child is backgrounded, then we don't want to block the shell.
+    int bgExists = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent == curproc && p->backgrounded)
+        bgExists = 1;
+    }
+    if(bgExists){
+      release(&ptable.lock);
+      return -1;  // Return immediately so the shell can become active.
+    }
+    // Otherwise, sleep waiting for children to exit.
+    sleep(curproc, &ptable.lock);
   }
 }
+
+
+// int
+// wait(void)
+// {
+//   struct proc *p;
+//   int havekids, pid;
+//   struct proc *curproc = myproc();
+  
+//   acquire(&ptable.lock);
+//   for(;;){
+//     // Scan through table looking for exited children.
+//     havekids = 0;
+//     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//       if(p->parent != curproc)
+//         continue;
+//       havekids = 1;
+//       if(p->state == ZOMBIE){
+//         // Found one.
+//         pid = p->pid;
+//         kfree(p->kstack);
+//         p->kstack = 0;
+//         freevm(p->pgdir);
+//         p->pid = 0;
+//         p->parent = 0;
+//         p->name[0] = 0;
+//         p->killed = 0;
+//         p->state = UNUSED;
+//         release(&ptable.lock);
+//         return pid;
+//       }
+//     }
+
+//     // No point waiting if we don't have any children.
+//     if(!havekids || curproc->killed){
+//       release(&ptable.lock);
+//       return -1;
+//     }
+
+//     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+//     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+//   }
+// }
+
+///////////////////////////////////////////////////
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
