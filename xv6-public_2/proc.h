@@ -36,6 +36,32 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+/*
+EMBRYO : The kernel is in the process of creating a new process.
+It hasn't been fully initialized yet.
+In allocproc(), right after finding a free slot:
+p->state = EMBRYO;
+It means : Hey, I’ve grabbed a slot and I’m working on setting up its memory, stack, trapframe, etc
+
+SLEEPING : The process is blocked, waiting for an event to happen (I/O, pipe, timer, child exit...).
+It’s not runnable, even if the CPU is free.
+When you call sleep(chan, lock) in xv6, your process becomes SLEEPING, and is parked on the chan.
+It's woken up by wakeup(chan) when the event occurs.
+
+RUNNABLE : The process is ready to run, but the CPU hasn't picked it yet.
+It's in the run queue.When wakeup() is called on a sleeping process, it becomes RUNNABLE.
+The scheduler (scheduler() in proc.c) picks a RUNNABLE process and gives it CPU
+
+RUNNING : The process is currently running on the CPU.
+The scheduler sets a process’s state to RUNNING before switching to it : p->state = RUNNING;
+
+
+ZOMBIE : The process has exited, but its parent hasn't called wait() yet.
+Its resources (e.g., memory) are freed, but the proc slot is still there so the parent can read its exit status.
+In exit(), the process becomes a ZOMBIE.
+In wait(), the parent finds child processes in ZOMBIE state and reaps them, then sets them to UNUSED
+
+*/
 
 // Per-process state
 struct proc {

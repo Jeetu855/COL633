@@ -45,14 +45,14 @@ void suspend_bg(void) {
         p->chan = &bgchan_dummy;
         p->state = SLEEPING;
         p->backgrounded = 1;
-        // cprintf("Process %d backgrounded (was RUNNABLE)\n", p->pid);
+        wakeup1((void *)p->parent); // wake shell
       } else if (p->state == RUNNING) {
         p->backgrounded = 1;
-        // cprintf("Process %d marked for backgrounding (is RUNNING)\n", p->pid);
+        wakeup1((void *)p->parent);
       } else if (p->state == SLEEPING && p->chan != &bgchan_dummy) {
         p->chan = &bgchan_dummy;
         p->backgrounded = 1;
-        // cprintf("Process %d backgrounded (was SLEEPING)\n", p->pid);
+        wakeup1((void *)p->parent);
       }
     }
   }

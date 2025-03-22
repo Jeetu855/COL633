@@ -223,7 +223,7 @@ consoleintr(int (*getc)(void))
       }
       break;
 ////////////////////////////////////////////////////////////////////////
-/* C+C */
+/* C + C */
       case C('C'):   
 
       char* stop_message="\nctrl+c pressed\n";
