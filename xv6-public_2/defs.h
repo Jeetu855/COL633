@@ -22,7 +22,7 @@ void            bwrite(struct buf*);
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
-void            consoleintr(int(*)(void));
+int            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
 // exec.c
@@ -123,6 +123,11 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+//////////////////////
+/* C + B     C + F */
+void            make_background_locked(void);
+
+///////////////////////////
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -7,22 +7,16 @@
 #include "proc.h"
 #include "spinlock.h"
 
-////////////////////////////////
-/*C + C*/
+//////////////////////////
+/*  C + C  */
 struct proc_table{
   struct spinlock lock;
   struct proc proc[NPROC];
 };
 
 struct proc_table ptable;
-////////////////////////////////////////////
 
-//////////////////////////////////
-/*C + B*/
-
-char bgchan_dummy;  // Use its address as the unique background channel
-
-///////////////////////////
+////////////////////////
 
 static struct proc *initproc;
 
@@ -32,54 +26,26 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-////////////////////////////////////////////
-/*  background a process */
 
-void suspend_bg(void) {
+///////////////////////////////
+/* C + B        C + F     */
+
+void
+make_background_locked(void)
+{
   struct proc *p;
-  acquire(&ptable.lock);
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-    // cprintf("pid %d state %d\n", p->pid, p->state);
-    if (p->pid > 2) {
-      if (p->state == RUNNABLE) {
-        p->chan = &bgchan_dummy;
-        p->state = SLEEPING;
-        p->backgrounded = 1;
-        wakeup1((void *)p->parent); // wake shell
-      } else if (p->state == RUNNING) {
-        p->backgrounded = 1;
-        wakeup1((void *)p->parent);
-      } else if (p->state == SLEEPING && p->chan != &bgchan_dummy) {
-        p->chan = &bgchan_dummy;
-        p->backgrounded = 1;
-        wakeup1((void *)p->parent);
-      }
-    }
+  // Assumes ptable.lock is already acquired.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid > 2)
+      p->b = 1;
   }
-  release(&ptable.lock);
+  // Do not release the lock here.
 }
+
+
 
 
 //////////////////////////////
-
-////////////////////////////////////
-/* C + F*/
-
-void resume_bg(void) {
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == SLEEPING && p->chan == &bgchan_dummy) {
-      p->chan = 0;
-      p->state = RUNNABLE;
-      // cprintf("Process %d resumed\n", p->pid);
-    }
-  }
-  release(&ptable.lock);
-}
-
-
-///////////////////////////////////////
 
 void
 pinit(void)
@@ -172,10 +138,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  ///////////////
-  /*background*/
-  p->backgrounded = 0;
-  /////////////////
+
   return p;
 }
 
@@ -279,6 +242,11 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  ////////////////
+  /*  C + B  C + F*/
+  np->b = 0;
+  ///////////////////
+
 
   release(&ptable.lock);
 
@@ -333,10 +301,6 @@ exit(void)
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-
-////////////////////////////////////////////////////////
-
-/* C + B*/
 int
 wait(void)
 {
@@ -346,16 +310,14 @@ wait(void)
   
   acquire(&ptable.lock);
   for(;;){
+    // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
-      // If the child is backgrounded, skip waiting on it.
-      if(p->backgrounded)
-        continue;
       if(p->state == ZOMBIE){
-        // Found one; reap it.
+        // Found one.
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -368,71 +330,28 @@ wait(void)
         release(&ptable.lock);
         return pid;
       }
+      /////////////////////
+      /* C + B   C + F */
+      if(p && p->b == 1 && curproc->pid==2){
+        release(&ptable.lock);
+        return pid;
+      }
+
+      ////////////////////
     }
-    // If there are no children at all, or the current process is killed, return.
+
+    // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
     }
-    // If at least one child is backgrounded, then we don't want to block the shell.
-    int bgExists = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent == curproc && p->backgrounded)
-        bgExists = 1;
-    }
-    if(bgExists){
-      release(&ptable.lock);
-      return -1;  // Return immediately so the shell can become active.
-    }
-    // Otherwise, sleep waiting for children to exit.
-    sleep(curproc, &ptable.lock);
+
+    
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
-
-
-// int
-// wait(void)
-// {
-//   struct proc *p;
-//   int havekids, pid;
-//   struct proc *curproc = myproc();
-  
-//   acquire(&ptable.lock);
-//   for(;;){
-//     // Scan through table looking for exited children.
-//     havekids = 0;
-//     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-//       if(p->parent != curproc)
-//         continue;
-//       havekids = 1;
-//       if(p->state == ZOMBIE){
-//         // Found one.
-//         pid = p->pid;
-//         kfree(p->kstack);
-//         p->kstack = 0;
-//         freevm(p->pgdir);
-//         p->pid = 0;
-//         p->parent = 0;
-//         p->name[0] = 0;
-//         p->killed = 0;
-//         p->state = UNUSED;
-//         release(&ptable.lock);
-//         return pid;
-//       }
-//     }
-
-//     // No point waiting if we don't have any children.
-//     if(!havekids || curproc->killed){
-//       release(&ptable.lock);
-//       return -1;
-//     }
-
-//     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-//     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
-//   }
-// }
-
-///////////////////////////////////////////////////
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -458,6 +377,12 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+      /////////////////////
+      /*C + B  C + F*/
+      if(p->b == 1){
+        continue;
+      }
+      ////////////////////////////
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -584,14 +509,7 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
-    /*for C +B comment the next line*/
-      // p->state = RUNNABLE;
-      ////////////////////
-      /* for C+B */
-      if(p->chan != &bgchan_dummy) {
-        p->state = RUNNABLE;
-      }
-      //////////////////////////
+      p->state = RUNNABLE;
 }
 
 // Wake up all processes sleeping on chan.

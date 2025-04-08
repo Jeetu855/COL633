@@ -8,16 +8,6 @@
 #include "traps.h"
 #include "spinlock.h"
 
-///////////////////////
-/*C+B*/
-extern struct {
-  struct spinlock lock;
-  struct proc proc[NPROC];
-} ptable;
-
-extern char bgchan_dummy;
-/////////////////////
-
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
@@ -119,16 +109,4 @@ trap(struct trapframe *tf)
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
-  ////////////////////////////
-  /* C+B */
-  if(myproc() && myproc()->backgrounded) {
-      acquire(&ptable.lock);
-      myproc()->chan = &bgchan_dummy;
-      myproc()->state = SLEEPING;
-      myproc()->backgrounded = 0;
-      // sched();  // not needed as sleep calls sched in itself
-      sleep(&bgchan_dummy, &ptable.lock);
-      release(&ptable.lock);
-    }
-    ////////////////////////////////
 }

@@ -188,19 +188,25 @@ struct {
 
 #define C(x)  ((x)-'@')  // Control-x
 
-
-///////////
+////////////////////
+/*    C + C   */
 struct proc_table{
   struct spinlock lock;
   struct proc proc[NPROC];
 };
 extern struct proc_table ptable;
-/////////////
+//////////////////
 
-void
+int
 consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
+
+  //////////
+  /* C + B */
+  struct proc *p;
+  unsigned char flags = 0;  // single 8-bit flag variable
+  //////////
 
   acquire(&cons.lock);
   while((c = getc()) >= 0){
@@ -222,8 +228,9 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-////////////////////////////////////////////////////////////////////////
-/* C + C */
+
+      ////////////////////
+      /* C + C   */
       case C('C'):   
 
       char* stop_message="\nctrl+c pressed\n";
@@ -235,7 +242,7 @@ consoleintr(int (*getc)(void))
       }
       
 
-      struct proc *p;
+      
 
       acquire(&ptable.lock);
 
@@ -248,35 +255,22 @@ consoleintr(int (*getc)(void))
       release(&ptable.lock);
 
       break;
-////////////////////////////////////////////////////////
+      //////////////////////////
+
+      //////////////////////////
+      /*  C + B*/
+
+      case C('B'):
+      flags |= FLAG_CTRLB;  // set bit for Ctrl+B
+        break;
+      
+
+    case C('F'):
+    flags |= FLAG_CTRLF;  // set bit for Ctrl+F
+      break;  
 
 
-//////////////////////////////////////////////////
-      /*C+B         and  C+F    */
-
-    case C('B'):  // Ctrl+B for backgrounding (SIGBG)
-      // Print a message to the console.
-      char* bg_message="\n CTRL + B pressed \n";
-
-      while (*bg_message!='\0')
-      {
-        consputc(*bg_message);
-        bg_message++;
-      }
-      suspend_bg();  // Call the function to background processes.
-      break;
-    case C('F'):  // Ctrl+F for foregrounding (SIGFG)
-        char* continue_message="\n CTRL + F pressed \n";
-
-        while (*continue_message!='\0')
-        {
-          consputc(*continue_message);
-          continue_message++;
-        }
-      resume_bg();   // Call the function to resume suspended processes.
-      break;
-
-////////////////////////////////////////////////////
+      ////////////////////////
 
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
@@ -295,6 +289,46 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+///////////////////////////////////
+/*  C + B   C + F  */
+  if(flags & FLAG_CTRLB){
+    // cprintf("in consoleintr\n");
+      acquire(&ptable.lock);
+      make_background_locked();
+      // for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      //   if (p->pid > 2 && p) {
+      //     p->b = 1;
+      //   }
+      // }
+
+      // Wake shell (PID 2) directly
+      struct proc *sh;
+      for (sh = ptable.proc; sh < &ptable.proc[NPROC]; sh++) {
+        if (sh && sh->pid == 2) {
+          sh->state = RUNNABLE;
+          release(&ptable.lock);
+          wakeup(sh->chan);
+          break;
+        }
+      }
+
+      return SIGBG;
+  }
+  if(flags & FLAG_CTRLF){
+    acquire(&ptable.lock);
+    for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p && (p->pid)>2 && p->b == 1)
+      {
+        p->b = 0;
+        p->state = RUNNABLE;
+      }
+      else if (p->pid==2) p->state = SLEEPING;
+    }
+    release(&ptable.lock);
+    return SIGFG;
+  }
+
+//////////////////////////////////////
 }
 
 int
