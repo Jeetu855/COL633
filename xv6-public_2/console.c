@@ -294,24 +294,26 @@ consoleintr(int (*getc)(void))
   if(flags & FLAG_CTRLB){
     // cprintf("in consoleintr\n");
       acquire(&ptable.lock);
-      make_background_locked();
-      // for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-      //   if (p->pid > 2 && p) {
-      //     p->b = 1;
-      //   }
-      // }
+      // make_background_locked();
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->pid > 2 && p && p->state != ZOMBIE) {
+          p->b = 1;
+        }
+      }
 
       // Wake shell (PID 2) directly
       struct proc *sh;
+
       for (sh = ptable.proc; sh < &ptable.proc[NPROC]; sh++) {
         if (sh && sh->pid == 2) {
           sh->state = RUNNABLE;
           release(&ptable.lock);
           wakeup(sh->chan);
-          break;
+          // break;
+          return SIGBG;
         }
       }
-
+      release(&ptable.lock);
       return SIGBG;
   }
   if(flags & FLAG_CTRLF){
@@ -322,7 +324,9 @@ consoleintr(int (*getc)(void))
         p->b = 0;
         p->state = RUNNABLE;
       }
-      else if (p->pid==2) p->state = SLEEPING;
+      else if (p->pid==2){
+        p->state = SLEEPING;
+      }
     }
     release(&ptable.lock);
     return SIGFG;
