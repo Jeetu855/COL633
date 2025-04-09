@@ -241,7 +241,11 @@ consoleintr(int (*getc)(void))
         stop_message++;
       }
       
+
+      
+
       acquire(&ptable.lock);
+
 
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->pid>=3)
@@ -264,6 +268,14 @@ consoleintr(int (*getc)(void))
     case C('F'):
     flags |= FLAG_CTRLF;  // set bit for Ctrl+F
       break;
+
+    ////////////////////
+    /* C +   G */
+    case C('G'):
+      //cprintf("Ctrl -G is detected by xv6\n");
+      send_sigcustom();  // Defined in proc.c (see next step)
+      break;
+    //////////////////////////////
 
 
       ////////////////////////

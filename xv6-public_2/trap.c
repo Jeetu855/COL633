@@ -128,7 +128,7 @@
 #include "spinlock.h"
 
 // Define a magic return address constant for signal returns.
-#define MAGIC_SIGRET 0xC0DEDEAD
+#define MAGIC_SIGRET 0xDEADBEEF
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -166,8 +166,6 @@ void trap(struct trapframe *tf)
     return;
   }
 
-////////////////////////////////////
-/*  C + G  */
   switch (tf->trapno)
   {
   case T_IRQ0 + IRQ_TIMER:
@@ -283,4 +281,3 @@ void trap(struct trapframe *tf)
     curproc->pending_signal = 0;
   }
 }
-//////////////////////////////////////////
