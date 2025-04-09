@@ -233,7 +233,7 @@ consoleintr(int (*getc)(void))
       /* C + C   */
       case C('C'):   
 
-      char* stop_message="\nctrl+c pressed\n";
+      char* stop_message="\nCtrl-C is detected by xv6\n";
 
       while (*stop_message!='\0')
       {
@@ -272,7 +272,13 @@ consoleintr(int (*getc)(void))
     ////////////////////
     /* C +   G */
     case C('G'):
-      //cprintf("Ctrl -G is detected by xv6\n");
+    char* ctrl_g_msg="\nCtrl-G is detected by xv6\n";
+
+      while (*ctrl_g_msg!='\0')
+      {
+        consputc(*ctrl_g_msg);
+        ctrl_g_msg++;
+      }
       send_sigcustom();  // Defined in proc.c (see next step)
       break;
     //////////////////////////////
@@ -300,7 +306,7 @@ consoleintr(int (*getc)(void))
 ///////////////////////////////////
 /*  C + B   C + F  */
   if(flags & FLAG_CTRLB){
-    // cprintf("in consoleintr\n");
+    cprintf("Ctrl-B is detected by xv6\n");
       acquire(&ptable.lock);
       // make_background_locked();
       for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
@@ -325,6 +331,7 @@ consoleintr(int (*getc)(void))
       return SIGBG;
   }
   if(flags & FLAG_CTRLF){
+    cprintf("Ctrl-F is detected by xv6\n");
     acquire(&ptable.lock);
     for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p && (p->pid)>2 && p->b == 1)
