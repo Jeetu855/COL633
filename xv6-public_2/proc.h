@@ -1,6 +1,11 @@
 #ifndef PROC_H
 #define PROC_H
 
+////////
+/* C + G */
+typedef void (*sighandler_t)(void);
+///////
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -24,6 +29,7 @@ extern int ncpu;
 #define FLAG_CTRLB  0x01  // bit 0 for Ctrl+B
 #define FLAG_CTRLF  0x02  // bit 1 for Ctrl+F
 ///////////////////
+
 
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
@@ -68,6 +74,13 @@ struct proc {
   /* C + B   C + F*/
   int b;
   //////////////////
+
+  /////////////
+  /* C + G */
+  int pending_signal;
+  sighandler_t signal_handler;
+  struct trapframe *saved_tf;
+  ////////////
 };
 
 // Process memory is laid out contiguously, low addresses first:

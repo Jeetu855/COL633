@@ -27,6 +27,12 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+///////////////////
+/* C + G */
+int signal(void (*handler)(void));
+int sigreturn(void);  // Even if you don't call it directly from user space.
+///////////////////
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

@@ -241,11 +241,7 @@ consoleintr(int (*getc)(void))
         stop_message++;
       }
       
-
-      
-
       acquire(&ptable.lock);
-
 
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->pid>=3)
@@ -258,7 +254,7 @@ consoleintr(int (*getc)(void))
       //////////////////////////
 
       //////////////////////////
-      /*  C + B*/
+      /*  C + B  C + F   C + G */
 
       case C('B'):
       flags |= FLAG_CTRLB;  // set bit for Ctrl+B
@@ -267,7 +263,7 @@ consoleintr(int (*getc)(void))
 
     case C('F'):
     flags |= FLAG_CTRLF;  // set bit for Ctrl+F
-      break;  
+      break;
 
 
       ////////////////////////

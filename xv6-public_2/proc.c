@@ -18,6 +18,44 @@ struct proc_table ptable;
 
 ////////////////////////
 
+
+///////////////
+/*  C + G */
+// sys_signal: Registers the user’s signal handler.
+// (One argument only: the handler pointer, as in the test program.)
+int sys_signal(void)
+{
+  sighandler_t handler;
+  if(argptr(0, (void *)&handler, sizeof(handler)) < 0)
+    return -1;
+  struct proc *p = myproc();
+  p->signal_handler = handler;
+  // No stub is passed; we rely on a magic value for returning.
+  return 0;
+}
+
+// sys_sigreturn: (You may keep this simple.) Here, we restore the saved trapframe
+int sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+  if(p->saved_tf == 0)
+    return -1;  // Nothing saved.
+  memmove(p->tf, p->saved_tf, sizeof(struct trapframe));
+  kfree((char*)p->saved_tf);
+  p->saved_tf = 0;
+  return 0;
+}
+
+
+void send_sigcustom(void) {
+  struct proc *p = myproc();
+  if (p) {
+    p->pending_signal = 1;
+  }
+}
+
+/////////////
+
 static struct proc *initproc;
 
 int nextpid = 1;

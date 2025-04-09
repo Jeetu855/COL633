@@ -167,7 +167,10 @@ main(void)
     if(fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
+    //////////////// 
+    /* C + B    testing*/
     printf(1,"in sh.c main function\n");
+    /////////////////
   }
   exit();
 }
