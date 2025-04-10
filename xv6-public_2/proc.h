@@ -51,7 +51,7 @@ struct context {
 };
 
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE};
+enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE,CUSTOM_WAIT};
 
 
 
@@ -81,6 +81,27 @@ struct proc {
   sighandler_t signal_handler;
   struct trapframe *saved_tf;
   ////////////
+
+
+  //////////////sched
+// **** New fields for custom fork ****
+int custom;          // Set to 1 if process was created using custom_fork
+  
+int start_later;     // If 1, do not schedule until sys_scheduler_start is called
+int exec_time;       // Number of ticks the process should run (-1 means run indefinitely)
+int ticks_run;       // Number of ticks the process has run so far
+
+  // **** Scheduler profiler fields ****
+  int creation_time;      // Tick when process was created
+  int first_cpu_time;     // Tick when process first got the CPU (-1 if not yet scheduled)
+  int finish_time;        // Tick when process finished execution
+  int rtime;              // Total CPU run time (accumulated during RUNNING state)
+  int context_switches;   // Number of context switches incurred
+  ///////////////////////////////////////////part2.2
+   int init_priority; 
+   int waiting_time;
+    
+
 };
 
 // Process memory is laid out contiguously, low addresses first:

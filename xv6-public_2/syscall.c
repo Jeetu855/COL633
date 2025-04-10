@@ -104,12 +104,16 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 
+
 /////////
 /* C + G */
 extern int sys_signal(void);
 extern int sys_sigreturn(void);
 
 //////////
+////////scheduler
+extern int sys_custom_fork(void);
+extern int sys_scheduler_start(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -139,7 +143,10 @@ static int (*syscalls[])(void) = {
 [SYS_signal]    sys_signal,
 [SYS_sigreturn] sys_sigreturn,
 
-//////////
+//////////sched
+
+[SYS_custom_fork]    sys_custom_fork,
+  [SYS_scheduler_start] sys_scheduler_start,
 };
 
 void

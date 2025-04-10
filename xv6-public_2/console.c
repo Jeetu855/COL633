@@ -312,6 +312,7 @@ consoleintr(int (*getc)(void))
       for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         if (p->pid > 2 && p && p->state != ZOMBIE) {
           p->b = 1;
+       
         }
       }
 
@@ -336,6 +337,7 @@ consoleintr(int (*getc)(void))
     for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p && (p->pid)>2 && p->b == 1)
       {
+
         p->b = 0;
         p->state = RUNNABLE;
       }
@@ -414,4 +416,3 @@ consoleinit(void)
 
   ioapicenable(IRQ_KBD, 0);
 }
-

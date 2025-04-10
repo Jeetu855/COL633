@@ -47,4 +47,9 @@ void* malloc(uint);
 void free(void*);
 int atoi(const char*);
 
+// user.h
+int custom_fork(int, int);
+int scheduler_start(void);
+
+
 #endif // USER_H

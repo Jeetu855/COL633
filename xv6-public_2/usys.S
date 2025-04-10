@@ -33,3 +33,7 @@ SYSCALL(uptime)
 
 SYSCALL(signal)
 SYSCALL(sigreturn)
+
+
+SYSCALL(custom_fork)
+SYSCALL(scheduler_start)

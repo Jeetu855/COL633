@@ -21,25 +21,23 @@ struct proc_table ptable;
 
 ///////////////
 /*  C + G */
-// sys_signal: Registers the user’s signal handler.
-// (One argument only: the handler pointer, as in the test program.)
+
 int sys_signal(void)
 {
   sighandler_t handler;
-  if(argptr(0, (void *)&handler, sizeof(handler)) < 0)
-    return -1;
-  struct proc *p = myproc();
-  p->signal_handler = handler;
-  // No stub is passed; we rely on a magic value for returning.
-  return 0;
+  if(!(argptr(0, (void *)&handler, sizeof(handler)) < 0)) {
+    myproc()->signal_handler = handler;
+    return 0;
+  }
+
+  return -1;
 }
 
-// sys_sigreturn: (You may keep this simple.) Here, we restore the saved trapframe
 int sys_sigreturn(void)
 {
   struct proc *p = myproc();
   if(p->saved_tf == 0)
-    return -1;  // Nothing saved.
+    return -1; 
   memmove(p->tf, p->saved_tf, sizeof(struct trapframe));
   kfree((char*)p->saved_tf);
   p->saved_tf = 0;
@@ -133,8 +131,9 @@ myproc(void) {
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
-// state required to run in the kernel.
-// Otherwise return 0.
+
+
+
 static struct proc*
 allocproc(void)
 {
@@ -142,17 +141,26 @@ allocproc(void)
   char *sp;
 
   acquire(&ptable.lock);
-
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       goto found;
-
+  }
   release(&ptable.lock);
   return 0;
 
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
+  // Initialize profiler fields.
+  p->creation_time = ticks;   // record creation time
+  p->first_cpu_time = -1;     // not yet scheduled
+  p->finish_time = 0;
+  p->rtime = 0;               // total CPU run time (updated elsewhere)
+  p->context_switches = 0;
+
+  // Set initial dynamic priority from Makefile macro INIT_PRIORITY.
+  p->init_priority = INIT_PRIORITY;
 
   release(&ptable.lock);
 
@@ -176,6 +184,9 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
+  ///////////////
+  ///////////////
 
   return p;
 }
@@ -290,10 +301,6 @@ fork(void)
 
   return pid;
 }
-
-// Exit the current process.  Does not return.
-// An exited process remains in the zombie state
-// until its parent calls wait() to find out it exited.
 void
 exit(void)
 {
@@ -319,6 +326,20 @@ exit(void)
 
   acquire(&ptable.lock);
 
+  // Record finish time.
+  curproc->finish_time = ticks;
+
+
+  // Compute profiling metrics.
+  int tat = curproc->finish_time - curproc->creation_time;  // Turnaround time.
+  int rt = (curproc->first_cpu_time < 0 ? 0 : curproc->first_cpu_time - curproc->creation_time);  // Response time.
+ // int wt = tat - curproc->rtime - curproc->total_background_time;  // Waiting time.
+ int wt=(curproc->waiting_time< 0 ? 0 : curproc->waiting_time);
+
+  // Print the scheduler profiler metrics.
+  cprintf("PID: %d\nTAT: %d\nWT: %d\nRT: %d\n#CS: %d\n", 
+          curproc->pid, tat, wt, rt, curproc->context_switches);
+
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
@@ -331,11 +352,13 @@ exit(void)
     }
   }
 
-  // Jump into the scheduler, never to return.
+  // Mark the process as a zombie and schedule.
   curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
 }
+
+
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
@@ -398,48 +421,7 @@ wait(void)
 //  - choose a process to run
 //  - swtch to start running that process
 //  - eventually that process transfers control
-//      via swtch back to the scheduler.
-void
-scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-  
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-      /////////////////////
-      /*C + B  C + F*/
-      if(p->b == 1){
-        continue;
-      }
-      ////////////////////////////
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
-    release(&ptable.lock);
-
-  }
-}
+// //      via swtch back to the scheduler.
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
@@ -618,3 +600,200 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+/////////////////////////
+int
+custom_fork(int start_later, int exec_time)
+{
+  int i, pid;
+  struct proc *np;
+  struct proc *curproc = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+    kfree(np->kstack);
+    np->kstack = 0;
+    np->state = UNUSED;
+    return -1;
+  }
+  np->sz = curproc->sz;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+
+  np->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++){
+    if(curproc->ofile[i])
+      np->ofile[i] = filedup(curproc->ofile[i]);
+  }
+  np->cwd = idup(curproc->cwd);
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  // Set custom fork flags and execution time.
+  np->custom = 1;
+  np->start_later = start_later;
+  np->exec_time = exec_time;
+  np->rtime = 0;
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+  if(start_later){
+    np->state = CUSTOM_WAIT;  // Wait until explicitly started.
+  } else {
+    np->state = RUNNABLE;
+      ////////////////
+  /*  C + B  C + F*/
+  np->b = 0;
+  ///////////////////
+  }
+  release(&ptable.lock);
+
+  return pid;
+}
+
+
+// syscall wrapper for custom_fork; to be mapped to a syscall number (e.g. 24)
+int
+sys_custom_fork(void)
+{
+  int start_later, exec_time;
+  if(argint(0, &start_later) < 0)
+    return -1;
+  if(argint(1, &exec_time) < 0)
+    return -1;
+  return custom_fork(start_later, exec_time);
+}
+
+// sys_scheduler_start: System call that starts any custom forked processes that were created with start_later true.
+// When called, all processes in CUSTOM_WAIT state are moved to RUNNABLE.
+int
+sys_scheduler_start(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == CUSTOM_WAIT)
+      p->state = RUNNABLE;
+  }
+  release(&ptable.lock);
+  return 0;
+}
+
+
+
+int
+calculate_dynamic_priority(struct proc *p)
+{
+  return p->init_priority - ALPHA * p->rtime + BETA * p->waiting_time;
+}
+
+void
+scheduler(void)
+{
+  /////
+  static struct proc *prev_proc = 0;
+/////
+  struct proc *p;
+  struct proc *chosen = 0;
+  int best_priority;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+
+    acquire(&ptable.lock);
+    best_priority = -0x7fffffff;  // a very low initial value
+    chosen = 0;
+    // Scan the process table for a RUNNABLE process with highest dynamic priority.
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
+      if(p->state != RUNNABLE)
+        continue;
+    /////////////////////
+      /*C + B  C + F*/
+      if(p->b == 1){
+        continue;
+      }
+      ////////////////////////////
+  
+   
+       p->waiting_time++;  // Accumulate wait time in RUNNABLE state
+      
+        
+
+
+
+      int dyn_priority = calculate_dynamic_priority(p);
+
+     
+     
+ 
+      if (chosen == 0) {
+        chosen = p;
+        best_priority = dyn_priority;
+      } else if (dyn_priority > best_priority) {
+        chosen = p;
+        best_priority = dyn_priority;
+      } else if (dyn_priority == best_priority) {
+        if (p->pid < chosen->pid) {
+          chosen = p;
+          best_priority = dyn_priority;
+        }
+      } else {
+        // skip: current process 'p' is not better than chosen
+      }
+      
+
+    }
+
+    if(chosen){
+      // Record first CPU time (for response time) if not already set.
+      if(chosen->first_cpu_time < 0)
+        chosen->first_cpu_time = ticks;
+     chosen->waiting_time--;
+      // Switch to the chosen process.
+      int start_run=ticks;
+      c->proc = chosen;
+      chosen->state = RUNNING;
+      switchuvm(chosen);
+     
+      swtch(&c->scheduler, chosen->context);
+      switchkvm();
+      
+            // After process yields or is preempted, measure end time.
+            int end_run = ticks;
+            // Update runtime (rtime) with the duration of this CPU burst.
+            chosen->rtime += (end_run - start_run);
+      // After the process yields or is preempted, count a context switch.
+      // chosen->context_switches++;
+      if (prev_proc != chosen) {
+        chosen->context_switches++;
+      }
+      // if(chosen->exec_time > 0 && chosen->rtime >= chosen->exec_time) {
+      //   chosen->killed = 1;
+      prev_proc = chosen;
+      // }
+      if (chosen->exec_time > 0) {
+        if (chosen->rtime >= chosen->exec_time) {
+          chosen->killed = 1;
+        }
+      } else {
+        // skip: no execution limit or runs indefinitely
+      }      
+      c->proc = 0;
+    }
+    release(&ptable.lock);
+  }
+}
+
+
+//////////////////////

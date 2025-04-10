@@ -29,5 +29,7 @@
 #define SYS_signal    22
 #define SYS_sigreturn 23
 ///////////////////
+#define SYS_custom_fork    24
+#define SYS_scheduler_start 25
 
 #endif // SYSCALL_H

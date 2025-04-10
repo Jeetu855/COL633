@@ -169,7 +169,7 @@ main(void)
     wait();
     //////////////// 
     /* C + B    testing*/
-    printf(1,"in sh.c main function\n");
+    // printf(1,"in sh.c main function\n");
     /////////////////
   }
   exit();
